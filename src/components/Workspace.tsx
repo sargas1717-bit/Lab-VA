@@ -91,8 +91,8 @@ export function Workspace({
     }
   });
   const [showGameOver, setShowGameOver] = useState(false);
-  const [gameMode, setGameMode] = useState<"bubbles" | "plasma" | "lightning">("bubbles");
-  const gameModeRef = useRef<"bubbles" | "plasma" | "lightning">("bubbles");
+  const [gameMode, setGameMode] = useState<"bubbles" | "plasma" | "lightning" | "emotions">("bubbles");
+  const gameModeRef = useRef<"bubbles" | "plasma" | "lightning" | "emotions">("bubbles");
 
   // Estado del menú / lobby interno de juegos en el canvas y barra de energía
   const [inGameLobby, setInGameLobby] = useState(true);
@@ -110,6 +110,9 @@ export function Workspace({
   const prevP1Ref = useRef({ x: 0, y: 0 });
   const prevP2Ref = useRef({ x: 0, y: 0 });
   const soundCooldownRef = useRef(0);
+
+  const emotionsGameTargetRef = useRef<"Feliz" | "Sorpresa" | "Triste" | "Molesto">("Feliz");
+  const initialTimeLimitRef = useRef(30);
 
   // Lista de pilas/baterías cayendo para el modo de juego eléctrico
   const batteriesListRef = useRef<Array<{
@@ -298,10 +301,12 @@ export function Workspace({
     }
   };
 
-  const resetGame = () => {
-    console.log("[Workspace] Reiniciando partida...");
+  const resetGame = (timeLimit?: number) => {
+    const time = typeof timeLimit === 'number' ? timeLimit : initialTimeLimitRef.current;
+    initialTimeLimitRef.current = time;
+    console.log("[Workspace] Reiniciando partida con tiempo:", time);
     setScore(0);
-    setTimeLeft(30);
+    setTimeLeft(time);
     setGameActive(true);
     setShowGameOver(false);
     setElectricEnergy(0);
@@ -313,6 +318,9 @@ export function Workspace({
     batteriesListRef.current = [];
     prevP1Ref.current = { x: 0, y: 0 };
     prevP2Ref.current = { x: 0, y: 0 };
+
+    const emotionsList = ["Feliz", "Sorpresa", "Triste", "Molesto"];
+    emotionsGameTargetRef.current = emotionsList[Math.floor(Math.random() * emotionsList.length)] as any;
 
     if (gameIntervalRef.current) clearInterval(gameIntervalRef.current);
 
@@ -1631,35 +1639,51 @@ export function Workspace({
 
           // C. CyberMask 🤖
           else if (meshType === "cyber") {
-            ctx.strokeStyle = "rgba(6, 182, 212, 0.35)";
-            ctx.lineWidth = 0.85;
-
             const scannerY = ((Math.sin(Date.now() / 900) + 1) / 2) * height;
 
-            for (let i = 0; i < face.length - 12; i += 12) {
-              const p1 = face[i];
-              const p2 = face[i + 4];
-              const p3 = face[i + 8];
-
-              const x1 = (1 - p1.x) * width;
-              const y1 = p1.y * height;
-              const x2 = (1 - p2.x) * width;
-              const y2 = p2.y * height;
-              const x3 = (1 - p3.x) * width;
-              const y3 = p3.y * height;
-
-              const isClose = Math.abs(y1 - scannerY) < 30 || Math.abs(y2 - scannerY) < 30 || Math.abs(y3 - scannerY) < 30;
-
-              ctx.beginPath();
-              ctx.moveTo(x1, y1);
-              ctx.lineTo(x2, y2);
-              ctx.lineTo(x3, y3);
-              ctx.closePath();
-
-              ctx.fillStyle = isClose ? "rgba(6, 182, 212, 0.22)" : "rgba(6, 182, 212, 0.05)";
-              ctx.fill();
-              ctx.stroke();
+            ctx.save();
+            ctx.globalCompositeOperation = "screen";
+            
+            // Usamos solo un subconjunto de puntos (1 de cada 4) para el efecto plexus
+            const activeNodes = [];
+            for (let i = 0; i < face.length; i += 4) {
+              activeNodes.push({
+                x: (1 - face[i].x) * width,
+                y: face[i].y * height
+              });
             }
+
+            // Dibujar puntos y líneas de la malla Plexus
+            for (let i = 0; i < activeNodes.length; i++) {
+              const node = activeNodes[i];
+              const isCloseToScanner = Math.abs(node.y - scannerY) < 35;
+              
+              // Puntos (Brillan más cuando pasa el escáner)
+              ctx.fillStyle = isCloseToScanner ? "rgba(6, 182, 212, 0.95)" : "rgba(6, 182, 212, 0.5)";
+              ctx.beginPath();
+              ctx.arc(node.x, node.y, isCloseToScanner ? 1.8 : 1.0, 0, Math.PI * 2);
+              ctx.fill();
+
+              // Líneas conectoras
+              ctx.lineWidth = isCloseToScanner ? 1.2 : 0.5;
+              ctx.strokeStyle = isCloseToScanner ? "rgba(6, 182, 212, 0.7)" : "rgba(6, 182, 212, 0.35)";
+              
+              for (let j = i + 1; j < activeNodes.length; j++) {
+                const nodeB = activeNodes[j];
+                const dx = node.x - nodeB.x;
+                const dy = node.y - nodeB.y;
+                const dist = Math.sqrt(dx * dx + dy * dy);
+                
+                // Conectar solo los nodos cercanos proporcionalmente a la cara
+                if (dist < eyeDist * 0.35) {
+                  ctx.beginPath();
+                  ctx.moveTo(node.x, node.y);
+                  ctx.lineTo(nodeB.x, nodeB.y);
+                  ctx.stroke();
+                }
+              }
+            }
+            ctx.restore();
 
             // Ojos láser
             const leftEyeIndices = [33, 161, 160, 159, 158, 157, 173, 133, 155, 154, 153, 145, 144, 163];
@@ -1712,27 +1736,32 @@ export function Workspace({
               ctx.stroke();
             }
 
-            // Cabello llameante (partículas de fuego ascendente)
+            // Cabello llameante (partículas de fuego ascendente con mezcla aditiva)
             const topIndices = [10, 109, 338, 67, 297, 103, 332, 54, 284, 21, 251];
-            if (Math.random() < 0.75) {
+            if (Math.random() < 0.8) {
+              const headCenterX = (1 - face[10].x) * width; // Punto central del cabello superior
+
               topIndices.forEach((idx) => {
+                if (Math.random() > 0.3) return; // Solo 30% de probabilidad por punto por frame para evitar saturación
                 const pt = face[idx];
                 const hX = (1 - pt.x) * width;
                 const hY = pt.y * height;
 
-                for (let j = 0; j < 2; j++) {
-                  if (sporesListRef.current.length > 80) sporesListRef.current.shift();
-                  sporesListRef.current.push({
-                    x: hX + (Math.random() - 0.5) * (eyeDist * 0.45),
-                    y: hY - Math.random() * 8,
-                    vx: (Math.random() - 0.5) * 1.8,
-                    vy: -Math.random() * 4.2 - 2.5,
-                    size: Math.random() * (eyeDist * 0.22) + (eyeDist * 0.08),
-                    alpha: 1.0,
-                    decay: 0.03 + Math.random() * 0.025,
-                    colorType: Math.random() < 0.25 ? "red" : Math.random() < 0.75 ? "orange" : "yellow",
-                  });
-                }
+                if (sporesListRef.current.length > 500) sporesListRef.current.shift();
+                sporesListRef.current.push({
+                  x: hX + (Math.random() - 0.5) * (eyeDist * 0.15), // Mucho más centrado en el punto
+                  y: hY - Math.random() * 3, // Nace casi exactamente en el punto superior
+                  vx: (Math.random() - 0.5) * 0.8,
+                  vy: -Math.random() * 3 - 1.5,
+                  size: Math.random() * (eyeDist * 0.08) + (eyeDist * 0.04), // 💥 TAMAÑO MINÚSCULO (Aprox 5-12px)
+                  alpha: 0.5 + Math.random() * 0.3, // Menos opaco para evitar blob blanco
+                  decay: Math.random() * 0.015 + 0.01,
+                  colorType: "fire",
+                  r: 255,
+                  g: Math.floor(Math.random() * 60 + 30), // Más rojo
+                  b: 0,
+                  targetX: headCenterX
+                });
               });
             }
 
@@ -1910,11 +1939,24 @@ export function Workspace({
           const spores = sporesListRef.current;
           for (let i = spores.length - 1; i >= 0; i--) {
             const sp = spores[i];
+            
+            // Física específica para las llamas aditivas (fuego)
+            if (sp.colorType === "fire") {
+              const target = sp.targetX || width / 4;
+              if (sp.x < target) {
+                sp.vx += 0.015; // Suave tracción al centro
+              } else {
+                sp.vx -= 0.015;
+              }
+              sp.size -= 0.15; // Reducción lenta proporcional a su nuevo tamaño minúsculo
+            }
+
             sp.x += sp.vx;
             sp.y += sp.vy;
             sp.alpha -= sp.decay;
 
-            if (sp.alpha <= 0 || sp.x > width / 2) {
+            // Limpieza de partículas muertas
+            if (sp.alpha <= 0 || sp.x > width / 2 || sp.size <= 0) {
               spores.splice(i, 1);
               continue;
             }
@@ -1941,6 +1983,17 @@ export function Workspace({
                 ctx.arc(sp.x, sp.y, 1.8 * sp.alpha, 0, Math.PI * 2);
                 ctx.fill();
                 ctx.restore();
+              } else if (sp.colorType === "fire") {
+                // Fuego denso con mezcla aditiva y gradiente radial (Adaptado)
+                ctx.globalCompositeOperation = "lighter";
+                const grad = ctx.createRadialGradient(sp.x, sp.y, 0, sp.x, sp.y, Math.max(0.1, sp.size));
+                grad.addColorStop(0, `rgba(${sp.r}, ${sp.g}, ${sp.b}, ${sp.alpha})`);
+                grad.addColorStop(1, `rgba(${sp.r}, ${sp.g}, ${sp.b}, 0)`);
+                
+                ctx.beginPath();
+                ctx.arc(sp.x, sp.y, Math.max(0.1, sp.size), 0, Math.PI * 2);
+                ctx.fillStyle = grad;
+                ctx.fill();
               } else {
                 let hue = 15; // Red
                 if (sp.colorType === "orange") hue = 32;
@@ -2283,8 +2336,8 @@ export function Workspace({
               }
             });
 
-            // Si hay un molde guardado, adoptamos de inmediato la emoción asignada por el usuario (K-NN puro y manual con máxima fidelidad de distancias)
-            if (bestMatch) {
+            // Si hay un molde guardado y la distancia es menor al umbral (3.5), lo adoptamos
+            if (bestMatch && minDistance < 3.5) {
               cat = (bestMatch as SavedEmotion).emotion;
               emj = (bestMatch as SavedEmotion).emoji;
               matchedFromTemplate = true;
@@ -2623,15 +2676,16 @@ export function Workspace({
           ctx.fillText("[ POSICIONA EL DEDO ÍNDICE EN UN MÓDULO PARA SELECCIONAR ]", width / 2, 75);
 
           // Opciones de juegos
-          const cardW = Math.min(185, width / 3.4);
+          const cardW = Math.min(145, width / 4.4);
           const cardH = 175;
-          const startX = (width - (cardW * 3 + 40)) / 2;
+          const startX = (width - (cardW * 4 + 60)) / 2;
           const cardY = 105;
 
           const options = [
             { id: "bubbles", title: "Burbujas Clásicas", emoji: "🫧", desc: "Clásico. Explota esferas que ascienden velozmente en la pantalla con el dedo índice.", color: "#10B981" },
             { id: "plasma", title: "Tormenta Plasma", emoji: "⚡", desc: "Dual. Crea un canal superconductor entre ambas manos para pulverizar núcleos.", color: "#06B6D4" },
-            { id: "lightning", title: "Pilas y Rayos", emoji: "🔋", desc: "¡NUEVO! Carga celdas de energía para desbloquear la cyberMÁscara y ganar.", color: "#EAB308" }
+            { id: "lightning", title: "Pilas y Rayos", emoji: "🔋", desc: "¡NUEVO! Carga celdas de energía para desbloquear la cyberMÁscara y ganar.", color: "#EAB308" },
+            { id: "emotions", title: "Emociones", emoji: "🎭", desc: "Imita las emociones requeridas antes de que acabe el tiempo.", color: "#EC4899" }
           ];
 
           options.forEach((opt, idx) => {
@@ -2811,7 +2865,7 @@ export function Workspace({
             for (let i = listBubbles.length - 1; i >= 0; i--) {
               const b = listBubbles[i];
               b.pulse += 0.04;
-              b.y -= b.speedY * 2.8; // Aumentado significativamente el multiplicador de velocidad para que sea ágil y dinámico
+              b.y -= b.speedY * 4.5; // Aumentado significativamente el multiplicador de velocidad para que sea ágil y dinámico
 
               const waveX = b.x + Math.sin(b.pulse) * 1.5;
 
@@ -2953,7 +3007,7 @@ export function Workspace({
             for (let i = listBubbles.length - 1; i >= 0; i--) {
               const b = listBubbles[i];
               b.pulse += 0.055;
-              b.y -= b.speedY * 3.5; // Elevado de 1.3 a 3.5 de multiplicador para máxima aceleración y dinamismo fluidos
+              b.y -= b.speedY * 5.5; // Elevado de 1.3 a 3.5 de multiplicador para máxima aceleración y dinamismo fluidos
 
               // Ondulación inestable de plasma
               const waveX = b.x + Math.sin(b.pulse) * 2.5;
@@ -3713,13 +3767,13 @@ export function Workspace({
             // 2. Spawnear y animar pilas/baterías cayendo (solo si se está jugando activamente)
             if (active && electricWinStateRef.current === "playing") {
               const listBat = batteriesListRef.current;
-              // Rellenar pilas normales y negativas
-              while (listBat.length < 4) {
+              // Rellenar pilas normales y negativas inmediatamente en el borde
+              while (listBat.length < 10) {
                 const isNeg = Math.random() < 0.35; // 35% de probabilidad de pila que resta
                 listBat.push({
                   x: Math.random() * (width - 120) + 60,
-                  y: -60 - Math.random() * 120, // offset de caída escalonada
-                  vy: Math.random() * (isNeg ? 3.5 : 3.0) + 7.5, // Las pilas ahora caen mucho más rápido, ágil y desafiante (mínimo de 7.5px/frame)
+                  y: -40 - Math.random() * 40, // offset corto para que caiga inmediatamente tras desaparecer otra
+                  vy: Math.random() * (isNeg ? 4.5 : 4.0) + 12.5, // Las pilas ahora caen muchísimo más rápido para mejorar la velocidad
                   angle: Math.random() * Math.PI * 2,
                   spin: (Math.random() - 0.5) * (isNeg ? 0.12 : 0.06),
                   size: 24,
@@ -4026,6 +4080,186 @@ export function Workspace({
                 ctx.restore();
               }
             }
+          }
+        }
+
+        // B4. Modo de Juego 4: EMOCIONES
+        else if (currentMode === "emotions" && active) {
+          const face = faceLandmarksRef.current;
+          let cat = "Neutro";
+
+          if (face && face.length > 0) {
+            const eyeLeftCorner = face[130];
+            const eyeRightCorner = face[359];
+            const faceScale = Math.sqrt(
+              Math.pow(eyeLeftCorner.x - eyeRightCorner.x, 2) +
+              Math.pow(eyeLeftCorner.y - eyeRightCorner.y, 2)
+            );
+
+            // 1. Apertura labios
+            const lipT = face[13];
+            const lipB = face[14];
+            const rawGap = Math.abs(lipT.y - lipB.y) / faceScale;
+
+            // 2. Ancho comisuras
+            const mouthL = face[61];
+            const mouthR = face[291];
+            const rawMouthW = Math.sqrt(
+              Math.pow(mouthL.x - mouthR.x, 2) +
+              Math.pow(mouthL.y - mouthR.y, 2)
+            ) / faceScale;
+            const aspect = rawGap > 0.005 ? rawMouthW / rawGap : 99.0;
+
+            // 3. Curvatura de boca
+            const mouthCenterRef = face[0];
+            const cornersY = (mouthL.y + mouthR.y) / 2;
+            const rawCurv = (cornersY - mouthCenterRef.y) / faceScale;
+            let pCurv = 50 - rawCurv * 210;
+
+            // 4. Elevación de cejas
+            const leftB = face[70];
+            const leftEyeL = face[159];
+            const rightB = face[300];
+            const rightEyeL = face[386];
+            const rawBrowH = (Math.abs(leftB.y - leftEyeL.y) + Math.abs(rightB.y - rightEyeL.y)) / 2 / faceScale;
+
+            // 5. Fruncido de cejas
+            const inBLeft = face[107];
+            const inBRight = face[336];
+            const rawBrowF = Math.sqrt(
+              Math.pow(inBLeft.x - inBRight.x, 2) +
+              Math.pow(inBLeft.y - inBRight.y, 2)
+            ) / faceScale;
+
+            // 6. NUEVOS PUNTOS DE DETECCIÓN ADICIONALES PARA MÁXIMA PRECISIÓN (OJOS Y ÁNGULO DE CEJAS)
+            const rawEyeOpen = (Math.abs(face[159].y - face[145].y) + Math.abs(face[386].y - face[374].y)) / 2 / faceScale;
+            const leftBrowTilt = (face[107].y - face[70].y) / faceScale;
+            const rightBrowTilt = (face[336].y - face[300].y) / faceScale;
+            const rawBrowT = (leftBrowTilt + rightBrowTilt) / 2;
+            const rawNoseScrunch = (Math.abs(face[107].y - face[168].y) + Math.abs(face[336].y - face[168].y)) / 2 / faceScale;
+
+            // --- CLASIFICADOR PREMIUM DE PLANTILLAS PROTOTIPO (K-NEAREST NEIGHBOR, K=1) ---
+            let matchedFromTemplate = false;
+
+            if (samplesRef.current && samplesRef.current.length > 0) {
+              let bestMatch = null;
+              let minDistance = Infinity;
+
+              samplesRef.current.forEach((sample) => {
+                const sCurv = sample.metrics.rawCurvature;
+                const sGap = sample.metrics.rawLipGap;
+                const sFurrow = sample.metrics.rawBrowFurrow;
+                const sHeight = sample.metrics.rawBrowHeight;
+                const sEyeOpen = sample.metrics.rawEyeOpenness !== undefined ? sample.metrics.rawEyeOpenness : 0.07;
+                const sTilt = sample.metrics.rawBrowTilt !== undefined ? sample.metrics.rawBrowTilt : 0.0;
+                const sScrunch = sample.metrics.rawNoseScrunchDist !== undefined ? sample.metrics.rawNoseScrunchDist : 0.15;
+
+                const dCurvature = (rawCurv - sCurv) / 0.012;
+                const dLipGap = (rawGap - sGap) / 0.035;
+                const dBrowFurrow = (rawBrowF - sFurrow) / 0.025;
+                const dBrowHeight = (rawBrowH - sHeight) / 0.035;
+                const dEyeOpen = (rawEyeOpen - sEyeOpen) / 0.015;
+                const dTilt = (rawBrowT - sTilt) / 0.03;
+                const dScrunch = (rawNoseScrunch - sScrunch) / 0.025;
+
+                const distance = Math.sqrt(
+                  dCurvature * dCurvature +
+                  dLipGap * dLipGap +
+                  dBrowFurrow * dBrowFurrow +
+                  dBrowHeight * dBrowHeight +
+                  dEyeOpen * dEyeOpen +
+                  dTilt * dTilt +
+                  dScrunch * dScrunch
+                );
+
+                if (distance < minDistance) {
+                  minDistance = distance;
+                  bestMatch = sample;
+                }
+              });
+
+              // Solo usamos el molde si la distancia es razonablemente cercana (umbral de 3.5)
+              // Si es mayor, significa que está haciendo una cara muy distinta a sus moldes guardados.
+              if (bestMatch && minDistance < 3.5) {
+                cat = (bestMatch as any).emotion;
+                matchedFromTemplate = true;
+              }
+            }
+
+            // Fallback: Clasificador Algorítmico tradicional
+            if (!matchedFromTemplate) {
+              const thSmile = sliderSmileRef.current;
+              const thSurp = sliderSurpriseRef.current;
+              const thSad = sliderSadRef.current;
+              const thAngry = sliderAngryRef.current;
+              const thSurpBrows = sliderSurpriseBrowsRef.current;
+              const thSurpRatio = sliderSurpriseRatioRef.current;
+
+              if (rawCurv < thSmile || pCurv > 52.8 || (rawGap > 0.08 && aspect > thSurpRatio)) {
+                cat = "Feliz";
+              } else if (rawGap > thSurp * 0.9 && aspect < thSurpRatio && rawBrowH > thSurpBrows * 0.90) {
+                cat = "Sorpresa";
+              } else if ((rawCurv > thSad || pCurv < 47.8) && rawGap < 0.08) {
+                cat = "Triste";
+              } else if (rawBrowF > thAngry && rawBrowH < Math.max(0.255, thSurpBrows) && rawCurv > -0.012) {
+                cat = "Molesto";
+              }
+            }
+
+            // Check if matches target (Case insensitive y sin espacios)
+            const currentCatNorm = cat.trim().toLowerCase();
+            const targetCatNorm = emotionsGameTargetRef.current.trim().toLowerCase();
+
+            if (currentCatNorm === targetCatNorm) {
+              setScore((prev) => prev + 10);
+              playSuccessSound();
+              const emotionsList = ["Feliz", "Sorpresa", "Triste", "Molesto"];
+              let nextEmotion = emotionsList[Math.floor(Math.random() * emotionsList.length)];
+              while (nextEmotion === emotionsGameTargetRef.current) {
+                nextEmotion = emotionsList[Math.floor(Math.random() * emotionsList.length)];
+              }
+              emotionsGameTargetRef.current = nextEmotion as any;
+            }
+
+            // Draw HUD for emotions game
+            ctx.save();
+            const hudW = 340;
+            const hudH = 100;
+            const hudX = (width - hudW) / 2;
+            const hudY = 30;
+            
+            ctx.shadowBlur = 15;
+            ctx.shadowColor = "#EC4899";
+            ctx.fillStyle = "rgba(20, 20, 22, 0.85)";
+            ctx.strokeStyle = "#EC4899";
+            ctx.lineWidth = 2.5;
+            ctx.beginPath();
+            ctx.roundRect(hudX, hudY, hudW, hudH, 12);
+            ctx.fill();
+            ctx.stroke();
+
+            ctx.shadowBlur = 0;
+            ctx.fillStyle = "#EC4899";
+            ctx.font = "bold 12px Inter";
+            ctx.textAlign = "center";
+            ctx.fillText("¡HAZ ESTA EXPRESIÓN RÁPIDO!", width / 2, hudY + 25);
+
+            ctx.fillStyle = "#FFFFFF";
+            ctx.font = "900 32px Inter";
+            ctx.fillText(emotionsGameTargetRef.current.toUpperCase(), width / 2, hudY + 60);
+
+            // Draw current face detection
+            ctx.fillStyle = "#A1A1AA";
+            ctx.font = "bold 10px Inter";
+            ctx.fillText(`Tu expresión actual: ${cat.toUpperCase()}`, width / 2, hudY + 85);
+            ctx.restore();
+          } else {
+            ctx.save();
+            ctx.fillStyle = "#A1A1AA";
+            ctx.font = "bold 14px Inter";
+            ctx.textAlign = "center";
+            ctx.fillText("Buscando rostro...", width / 2, 50);
+            ctx.restore();
           }
         }
 

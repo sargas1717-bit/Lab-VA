@@ -109,4 +109,8 @@ export interface Spore {
   decay: number;
   color?: string;
   colorType?: "red" | "orange" | "yellow" | "electric";
+  r?: number;
+  g?: number;
+  b?: number;
+  targetX?: number;
 }

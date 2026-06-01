@@ -3,21 +3,22 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import { Sparkles, Trophy, Clock, RotateCcw, Gamepad2 } from "lucide-react";
+import { Sparkles, Trophy, Clock, RotateCcw, Gamepad2, Timer } from "lucide-react";
+import { useState } from "react";
 
 interface BubblesModuleProps {
   score: number;
   timeLeft: number;
   highScore: number;
-  onResetGame: () => void;
-  gameMode: "bubbles" | "plasma" | "lightning";
-  onSelectGameMode: (mode: "bubbles" | "plasma" | "lightning") => void;
+  onResetGame: (timeLimit: number) => void;
+  gameMode: "bubbles" | "plasma" | "lightning" | "emotions";
+  onSelectGameMode: (mode: "bubbles" | "plasma" | "lightning" | "emotions") => void;
 }
 
 /**
  * Panel de Control del Módulo 3 (Juegos Sensoriales e Interacción Dual).
  * Muestra el panel de estadísticas, puntuación y temporizador del minijuego.
- * Permite reiniciar el temporizador a 30s y regenerar las burbujas virtuales o núcleos de plasma.
+ * Permite reiniciar el temporizador y regenerar el juego actual.
  */
 export function BubblesModule({
   score,
@@ -27,6 +28,8 @@ export function BubblesModule({
   gameMode,
   onSelectGameMode,
 }: BubblesModuleProps) {
+  const [selectedTime, setSelectedTime] = useState(30);
+
   return (
     <div className="flex-grow flex flex-col justify-between gap-5 text-[#E0E0E0] animate-fade-in" id="bubbles-container">
       <div>
@@ -34,7 +37,8 @@ export function BubblesModule({
         <div className="mb-4">
           <span className={`text-[10px] font-mono tracking-wider bg-[#1C1C1E] px-2 py-0.5 rounded border ${
             gameMode === "plasma" ? "text-[#06B6D4] border-[#06B6D4]/30" : 
-            gameMode === "lightning" ? "text-[#EAB308] border-[#EAB308]/30" : "text-[#10B981] border-[#10B981]/20"
+            gameMode === "lightning" ? "text-[#EAB308] border-[#EAB308]/30" : 
+            gameMode === "emotions" ? "text-[#EC4899] border-[#EC4899]/30" : "text-[#10B981] border-[#10B981]/20"
           }`}>
             MÓDULO DE PRUEBA_03
           </span>
@@ -42,6 +46,7 @@ export function BubblesModule({
             {gameMode === "bubbles" && "Burbujas Virtuales"}
             {gameMode === "plasma" && "Tormenta de Plasma"}
             {gameMode === "lightning" && "Pilas y Súper Rayos"}
+            {gameMode === "emotions" && "Simón Dice: Emociones"}
           </h4>
           
           <p className="text-xs text-[#A1A1AA] mt-1.5 pb-3 border-b border-[#2A2A2C] leading-relaxed">
@@ -60,32 +65,70 @@ export function BubblesModule({
                 Mueve tus manos <strong className="text-[#EAB308]">rápidamente</strong> para invocar descargas eléctricas de relámpago con sonido. ¡Atrapa las pilas cayendo para completar tu energía y ganar con la <strong>cyberMáscara</strong>!
               </>
             )}
+            {gameMode === "emotions" && (
+              <>
+                <strong className="text-[#EC4899]">¡Demuestra tus expresiones!</strong> Completa la emoción indicada en pantalla lo más rápido posible. Las emociones requeridas cambiarán al instante para ponerte a prueba.
+              </>
+            )}
           </p>
         </div>
 
         {/* Selector de Modo de Juego */}
-        <div className="flex gap-1.5 p-1 bg-[#141416] border border-[#2A2A2C] rounded-lg mb-4">
+        <div className="grid grid-cols-2 gap-1.5 p-1 bg-[#141416] border border-[#2A2A2C] rounded-lg mb-4">
           <button
             type="button"
             onClick={() => onSelectGameMode("bubbles")}
-            className={`flex-1 py-1.5 text-[9px] font-extrabold uppercase tracking-wider rounded transition-all duration-200 cursor-pointer ${gameMode === "bubbles" ? "bg-[#10B981] text-black shadow-lg" : "text-[#A1A1AA] hover:text-white"}`}
+            className={`py-1.5 text-[9px] font-extrabold uppercase tracking-wider rounded transition-all duration-200 cursor-pointer ${gameMode === "bubbles" ? "bg-[#10B981] text-black shadow-lg" : "text-[#A1A1AA] hover:text-white"}`}
           >
             Burbujas
           </button>
           <button
             type="button"
             onClick={() => onSelectGameMode("plasma")}
-            className={`flex-1 py-1.5 text-[9px] font-extrabold uppercase tracking-wider rounded transition-all duration-200 cursor-pointer ${gameMode === "plasma" ? "bg-[#06B6D4] text-black shadow-lg" : "text-[#A1A1AA] hover:text-white"}`}
+            className={`py-1.5 text-[9px] font-extrabold uppercase tracking-wider rounded transition-all duration-200 cursor-pointer ${gameMode === "plasma" ? "bg-[#06B6D4] text-black shadow-lg" : "text-[#A1A1AA] hover:text-white"}`}
           >
             Plasma
           </button>
           <button
             type="button"
             onClick={() => onSelectGameMode("lightning")}
-            className={`flex-1 py-1.5 text-[9px] font-extrabold uppercase tracking-wider rounded transition-all duration-200 cursor-pointer ${gameMode === "lightning" ? "bg-[#EAB308] text-black shadow-lg" : "text-[#A1A1AA] hover:text-white"}`}
+            className={`py-1.5 text-[9px] font-extrabold uppercase tracking-wider rounded transition-all duration-200 cursor-pointer ${gameMode === "lightning" ? "bg-[#EAB308] text-black shadow-lg" : "text-[#A1A1AA] hover:text-white"}`}
           >
-            Súper Pilas
+            Rayos
           </button>
+          <button
+            type="button"
+            onClick={() => onSelectGameMode("emotions")}
+            className={`py-1.5 text-[9px] font-extrabold uppercase tracking-wider rounded transition-all duration-200 cursor-pointer ${gameMode === "emotions" ? "bg-[#EC4899] text-white shadow-[0_0_10px_rgba(236,72,153,0.3)]" : "text-[#A1A1AA] hover:text-white"}`}
+          >
+            Emociones
+          </button>
+        </div>
+
+        {/* Selector de Tiempo de Juego */}
+        <div className="mb-4">
+          <div className="flex items-center gap-1.5 mb-2">
+            <Timer className="w-3.5 h-3.5 text-[#A1A1AA]" />
+            <span className="text-[10px] font-mono tracking-wider uppercase text-[#A1A1AA]">
+              Control de Tiempo
+            </span>
+          </div>
+          <div className="flex gap-1.5">
+            {[15, 30, 60].map((t) => (
+              <button
+                key={t}
+                type="button"
+                onClick={() => setSelectedTime(t)}
+                className={`flex-1 py-1.5 rounded-md text-[10px] font-bold font-mono transition-all ${
+                  selectedTime === t
+                    ? "bg-zinc-200 text-black border-transparent shadow-sm"
+                    : "bg-[#111112] border border-[#2A2A2C] text-[#A1A1AA] hover:border-zinc-500"
+                }`}
+              >
+                {t} Segundos
+              </button>
+            ))}
+          </div>
         </div>
 
         {/* Marcadores de Estadísticas en Bento Cards */}
@@ -94,14 +137,16 @@ export function BubblesModule({
           <div className="p-3 bg-[#1C1C1E] rounded-lg border border-[#2A2A2C] text-center flex flex-col justify-center items-center shadow-sm">
             <Gamepad2 className={`w-4 h-4 mb-1 ${
               gameMode === "plasma" ? "text-[#06B6D4]" : 
-              gameMode === "lightning" ? "text-[#EAB308]" : "text-[#10B981]"
+              gameMode === "lightning" ? "text-[#EAB308]" : 
+              gameMode === "emotions" ? "text-[#EC4899]" : "text-[#10B981]"
             }`} />
             <span className="text-[9px] text-[#636366] block uppercase font-bold tracking-widest font-mono">
-              {gameMode === "lightning" ? "PILAS" : "BURBUJAS"}
+              {gameMode === "lightning" ? "PILAS" : gameMode === "emotions" ? "EMOCIONES" : "BURBUJAS"}
             </span>
             <span className={`text-2xl font-bold font-mono mt-0.5 transition-all ${
               gameMode === "plasma" ? "text-[#06B6D4]" : 
-              gameMode === "lightning" ? "text-[#EAB308]" : "text-[#10B981]"
+              gameMode === "lightning" ? "text-[#EAB308]" : 
+              gameMode === "emotions" ? "text-[#EC4899]" : "text-[#10B981]"
             }`}>
               {score}
             </span>
@@ -111,7 +156,8 @@ export function BubblesModule({
           <div className="p-3 bg-[#1C1C1E] rounded-lg border border-[#2A2A2C] text-center flex flex-col justify-center items-center shadow-sm">
             <Clock className={`w-4 h-4 mb-1 ${timeLeft <= 5 ? "text-red-500 animate-pulse" : (
               gameMode === "plasma" ? "text-[#06B6D4]" : 
-              gameMode === "lightning" ? "text-[#EAB308]" : "text-[#10B981]"
+              gameMode === "lightning" ? "text-[#EAB308]" : 
+              gameMode === "emotions" ? "text-[#EC4899]" : "text-[#10B981]"
             )}`} />
             <span className="text-[9px] text-[#636366] block uppercase font-bold tracking-widest font-mono">
               TIEMPO
@@ -126,56 +172,30 @@ export function BubblesModule({
         <div className="p-3 bg-[#1C1C1E] rounded-lg border border-[#2A2A2C] text-center mt-3 flex items-center justify-center gap-2">
           <Trophy className={`w-4 h-4 shrink-0 colSpan-2 ${
             gameMode === "plasma" ? "text-[#06B6D4]" : 
-            gameMode === "lightning" ? "text-[#EAB308]" : "text-[#10B981]"
+            gameMode === "lightning" ? "text-[#EAB308]" : 
+            gameMode === "emotions" ? "text-[#EC4899]" : "text-[#10B981]"
           }`} />
           <span className="text-xs text-[#A1A1AA]">
             Récord Máximo:
             <strong className="text-white ml-1.5 font-bold font-mono">{highScore}</strong>
           </span>
         </div>
-
-        {/* Explicación de puntos clave */}
-        <div className="mt-4 p-3.5 bg-[#111112] border border-[#2A2A2C] rounded-lg flex gap-2.5 items-start">
-          <Sparkles className={`w-4 h-4 shrink-0 mt-0.5 ${
-            gameMode === "plasma" ? "text-[#06B6D4]" : 
-            gameMode === "lightning" ? "text-[#EAB308]" : "text-[#10B981]"
-          }`} />
-          <div className="text-[10px] text-[#A1A1AA] leading-normal animate-fade-in">
-            {gameMode === "bubbles" && (
-              <>
-                <h6 className="font-bold text-white mb-0.5 uppercase tracking-wide font-mono text-[9px]">Punto 8 del Sensor</h6>
-                La inteligencia artificial de MediaPipe detecta de forma automática los 21 puntos óseos de tu mano. El cursor está exclusivamente anclado al extremo final de tu dedo índice.
-              </>
-            )}
-            {gameMode === "plasma" && (
-              <>
-                <h6 className="font-bold text-[#06B6D4] mb-0.5 uppercase tracking-wide font-mono text-[9px]">Interferencia de Plasma Dual</h6>
-                El motor geométrico biométrico rastrea ambas manos secuencialmente en paralelo. El haz electromagnético interceptará y detona los núcleos con un multiplicador espacial.
-              </>
-            )}
-            {gameMode === "lightning" && (
-              <>
-                <h6 className="font-bold text-[#EAB308] mb-0.5 uppercase tracking-wide font-mono text-[9px]">SOBRECARGA VOLTAICA</h6>
-                ¡Establece campos eléctricos acelerados! Mover rápido tus manos genera destellos con sonido procedimental. Carga pilas para activar la cyberMáscara con ojos de tormenta eléctrica.
-              </>
-            )}
-          </div>
-        </div>
       </div>
 
       {/* Botón de reinicio */}
       <div>
         <button
-          onClick={onResetGame}
+          onClick={() => onResetGame(selectedTime)}
           type="button"
           id="btn-restart-game"
           className={`w-full text-black font-extrabold py-2.5 px-3 rounded-lg text-xs tracking-wider uppercase transition-all duration-200 flex items-center justify-center gap-1.5 cursor-pointer shadow-md ${
             gameMode === "plasma" ? "bg-[#06B6D4] hover:bg-[#0891b2]" : 
-            gameMode === "lightning" ? "bg-[#EAB308] hover:bg-[#ca8a04]" : "bg-[#10B981] hover:bg-[#059669]"
+            gameMode === "lightning" ? "bg-[#EAB308] hover:bg-[#ca8a04]" : 
+            gameMode === "emotions" ? "bg-[#EC4899] hover:bg-[#be185d]" : "bg-[#10B981] hover:bg-[#059669]"
           }`}
         >
           <RotateCcw className="w-3.5 h-3.5 text-black" />
-          REINICIAR TEMPORIZADOR
+          INICIAR JUEGO
         </button>
       </div>
     </div>
