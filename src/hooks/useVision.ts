@@ -100,11 +100,7 @@ export function useVision(activeModule: ModuleType) {
         console.log("[useVision] Configurando Pipeline de Malla Facial (Face Mesh)...");
         const faceMesh = new FaceMeshClass({
           locateFile: (file: string) => {
-            const isOffline = typeof navigator !== "undefined" && !navigator.onLine;
-            if (isOffline) {
-              return `/models/face_mesh/${file}`;
-            }
-            return `https://cdn.jsdelivr.net/npm/@mediapipe/face_mesh/${file}`;
+            return `/models/face_mesh/${file}`;
           },
         });
 
@@ -135,11 +131,7 @@ export function useVision(activeModule: ModuleType) {
         console.log("[useVision] Configurando Pipeline de Detección de Manos...");
         const hands = new HandsClass({
           locateFile: (file: string) => {
-            const isOffline = typeof navigator !== "undefined" && !navigator.onLine;
-            if (isOffline) {
-              return `/models/hands/${file}`;
-            }
-            return `https://cdn.jsdelivr.net/npm/@mediapipe/hands/${file}`;
+            return `/models/hands/${file}`;
           },
         });
 

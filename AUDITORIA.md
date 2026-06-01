@@ -10,7 +10,7 @@ El sistema descarta los acoplamientos innecesarios tradicionales y centraliza la
 
 ```
                   +--------------------------------+
-                  |            index.html          | (Carga CDN de MediaPipe: FaceMesh, Hands, Camera)
+                  |            index.html          | (Carga Local de MediaPipe: FaceMesh, Hands, Camera)
                   +--------------------------------+
                                   |
                                   v
