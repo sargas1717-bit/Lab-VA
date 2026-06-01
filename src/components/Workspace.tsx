@@ -11,6 +11,14 @@ import { EmotionsModule } from "./EmotionsModule";
 import { BubblesModule } from "./BubblesModule";
 import { ArrowLeft, RefreshCw, Smartphone, EyeOff, ShieldAlert } from "lucide-react";
 
+const CYBER_THEMES = [
+  { name: "Alerta Roja", mask: '255, 0, 50', halo1: '0, 255, 255', halo2: '255, 200, 0' },
+  { name: "Cyan Neón", mask: '0, 255, 255', halo1: '255, 0, 255', halo2: '0, 150, 255' },
+  { name: "Verde Tóxico", mask: '0, 255, 100', halo1: '255, 255, 0', halo2: '0, 200, 100' },
+  { name: "Púrpura Synth", mask: '200, 0, 255', halo1: '0, 255, 255', halo2: '255, 0, 100' },
+  { name: "Fuego Naranja", mask: '255, 100, 0', halo1: '255, 0, 0', halo2: '255, 200, 0' }
+];
+
 interface SparkleParticle {
   id: number;
   x: number;
@@ -93,6 +101,10 @@ export function Workspace({
   const [showGameOver, setShowGameOver] = useState(false);
   const [gameMode, setGameMode] = useState<"bubbles" | "plasma" | "lightning" | "emotions">("bubbles");
   const gameModeRef = useRef<"bubbles" | "plasma" | "lightning" | "emotions">("bubbles");
+
+  const [activeCyberTheme, setActiveCyberTheme] = useState(1);
+  const activeCyberThemeRef = useRef(1);
+  useEffect(() => { activeCyberThemeRef.current = activeCyberTheme; }, [activeCyberTheme]);
 
   // Estado del menú / lobby interno de juegos en el canvas y barra de energía
   const [inGameLobby, setInGameLobby] = useState(true);
@@ -227,6 +239,7 @@ export function Workspace({
     clasico: 0,
     biolum: 0,
     cyber: 0,
+    plexus: 0,
     fuego: 0,
     electrico: 0,
     lentes: 0,
@@ -734,7 +747,7 @@ export function Workspace({
   };
 
   // Dibujar ojos láser almendrados (CyberMask)
-  const drawCyberGlowEyeShape = (ctx: CanvasRenderingContext2D, landmarks: any[], indices: number[], width: number, height: number, eyeDistance: number) => {
+  const drawCyberGlowEyeShape = (ctx: CanvasRenderingContext2D, landmarks: any[], indices: number[], width: number, height: number, eyeDistance: number, themeColor: string = "34, 211, 238") => {
     ctx.save();
 
     ctx.beginPath();
@@ -761,9 +774,9 @@ export function Workspace({
 
     const radialGlow = ctx.createRadialGradient(centerX, centerY, glowSize * 0.05, centerX, centerY, glowSize * 1.1);
     radialGlow.addColorStop(0, "#ffffff");
-    radialGlow.addColorStop(0.35, "rgba(34, 211, 238, 0.95)"); // Cian 400
-    radialGlow.addColorStop(0.75, "rgba(6, 182, 212, 0.45)");
-    radialGlow.addColorStop(1, "rgba(6, 182, 212, 0)");
+    radialGlow.addColorStop(0.35, `rgba(${themeColor}, 0.95)`);
+    radialGlow.addColorStop(0.75, `rgba(${themeColor}, 0.45)`);
+    radialGlow.addColorStop(1, `rgba(${themeColor}, 0)`);
 
     ctx.fillStyle = radialGlow;
     ctx.fillRect(centerX - glowSize * 2, centerY - glowSize * 2, glowSize * 4, glowSize * 4);
@@ -771,9 +784,9 @@ export function Workspace({
 
     // Contorno
     ctx.save();
-    ctx.strokeStyle = "rgba(34, 211, 238, 0.95)";
+    ctx.strokeStyle = `rgba(${themeColor}, 0.95)`;
     ctx.lineWidth = 1.8;
-    ctx.shadowColor = "#22d3ee";
+    ctx.shadowColor = `rgb(${themeColor})`;
     ctx.shadowBlur = 8;
 
     ctx.beginPath();
@@ -1306,12 +1319,13 @@ export function Workspace({
           { id: "clasico", emoji: "🧬", label: "Clásico" },
           { id: "biolum", emoji: "🦠", label: "Biolum" },
           { id: "cyber", emoji: "🤖", label: "Cyber" },
+          { id: "plexus", emoji: "💠", label: "Plexus" },
           { id: "fuego", emoji: "🔥", label: "Fuego" },
           { id: "electrico", emoji: "⚡", label: "Electro" },
         ];
 
         leftButtons.forEach((btn, idx) => {
-          const btnX = (width / 2) * (0.10 + idx * 0.20);
+          const btnX = (width / 2) * (0.10 + idx * 0.16);
           const btnY = 50;
           const btnR = 21;
 
@@ -1445,6 +1459,69 @@ export function Workspace({
           }
           ctx.restore();
         });
+
+        // --- BOTONES SECUNDARIOS DE TEMAS PLEXUS ---
+        if (selectedMeshRef.current === "plexus") {
+          CYBER_THEMES.forEach((theme, idx) => {
+            const btnX = (width / 2) * (0.10 + idx * 0.20);
+            const btnY = height - 50; // ⬇️ Reubicado en la parte inferior como se solicitó
+            const btnR = 14;
+
+            let isHovered = false;
+            if (hasPointer) {
+              const dist = Math.sqrt(Math.pow(pointerX - btnX, 2) + Math.pow(pointerY - btnY, 2));
+              if (dist < btnR + 10) isHovered = true; 
+            }
+
+            const hoverId = `cyber_theme_${idx}`;
+            const hoverMap = hoverTimersRef.current;
+            if (isHovered) {
+              hoverMap[hoverId] = Math.min((hoverMap[hoverId] || 0) + 1, 35);
+              if (hoverMap[hoverId] === 35 && activeCyberThemeRef.current !== idx) {
+                setActiveCyberTheme(idx);
+                activeCyberThemeRef.current = idx; // Actualización instantánea para el canvas
+                playSuccessSound();
+              }
+            } else {
+              hoverMap[hoverId] = Math.max((hoverMap[hoverId] || 0) - 1.5, 0);
+            }
+
+            const active = activeCyberThemeRef.current === idx;
+            ctx.save();
+            ctx.shadowColor = active ? `rgba(${theme.halo1}, 0.8)` : "rgba(0,0,0,0.5)";
+            ctx.shadowBlur = active ? 12 : 4;
+            ctx.fillStyle = active
+              ? `rgba(${theme.halo1}, 0.95)`
+              : isHovered
+              ? "rgba(30, 41, 59, 0.85)"
+              : "rgba(15, 23, 42, 0.65)";
+            ctx.strokeStyle = active ? "#ffffff" : `rgba(${theme.halo1}, 0.4)`;
+            ctx.lineWidth = 1.5;
+
+            ctx.beginPath();
+            ctx.arc(btnX, btnY, btnR, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.stroke();
+            ctx.shadowBlur = 0;
+
+            // Anillo progreso circular
+            if (hoverMap[hoverId] > 0) {
+              const progress = hoverMap[hoverId] / 35;
+              ctx.strokeStyle = `rgb(${theme.mask})`;
+              ctx.lineWidth = 2.5;
+              ctx.beginPath();
+              ctx.arc(btnX, btnY, btnR + 3, -Math.PI / 2, -Math.PI / 2 + Math.PI * 2 * progress);
+              ctx.stroke();
+            }
+
+            // Etiqueta
+            ctx.fillStyle = active ? "#ffffff" : "rgba(255, 255, 255, 0.6)";
+            ctx.font = "bold 8px Inter";
+            ctx.textAlign = "center";
+            ctx.fillText(theme.name.split(" ")[0], btnX, btnY - btnR - 6); // Arriba del botón para que no se corte
+            ctx.restore();
+          });
+        }
 
         // --- SUB-DIBUJO DE MUESTRA FACIAL EN FILTERS ---
         const face = faceLandmarksRef.current;
@@ -1639,10 +1716,104 @@ export function Workspace({
 
           // C. CyberMask 🤖
           else if (meshType === "cyber") {
+            ctx.strokeStyle = "rgba(6, 182, 212, 0.35)";
+            ctx.lineWidth = 0.85;
+
+            const scannerY = ((Math.sin(Date.now() / 900) + 1) / 2) * height;
+
+            for (let i = 0; i < face.length - 12; i += 12) {
+              const p1 = face[i];
+              const p2 = face[i + 4];
+              const p3 = face[i + 8];
+
+              const x1 = (1 - p1.x) * width;
+              const y1 = p1.y * height;
+              const x2 = (1 - p2.x) * width;
+              const y2 = p2.y * height;
+              const x3 = (1 - p3.x) * width;
+              const y3 = p3.y * height;
+
+              const isClose = Math.abs(y1 - scannerY) < 30 || Math.abs(y2 - scannerY) < 30 || Math.abs(y3 - scannerY) < 30;
+
+              ctx.beginPath();
+              ctx.moveTo(x1, y1);
+              ctx.lineTo(x2, y2);
+              ctx.lineTo(x3, y3);
+              ctx.closePath();
+
+              ctx.fillStyle = isClose ? "rgba(6, 182, 212, 0.22)" : "rgba(6, 182, 212, 0.05)";
+              ctx.fill();
+              ctx.stroke();
+            }
+
+            // Ojos láser
+            const leftEyeIndices = [33, 161, 160, 159, 158, 157, 173, 133, 155, 154, 153, 145, 144, 163];
+            const rightEyeIndices = [263, 388, 387, 386, 385, 384, 398, 362, 382, 381, 380, 374, 373, 390];
+            drawCyberGlowEyeShape(ctx, face, leftEyeIndices, width, height, eyeDist, "34, 211, 238");
+            drawCyberGlowEyeShape(ctx, face, rightEyeIndices, width, height, eyeDist, "34, 211, 238");
+
+            // Escáner láser vertical
+            ctx.save();
+            ctx.strokeStyle = "rgba(34, 211, 238, 0.95)";
+            ctx.lineWidth = 3.5;
+            ctx.shadowColor = "#06b6d4";
+            ctx.shadowBlur = 15;
+            ctx.beginPath();
+            ctx.moveTo(0, scannerY);
+            ctx.lineTo(width / 2, scannerY);
+            ctx.stroke();
+            ctx.restore();
+          }
+
+          // D. Plexus Cyber 💠 (Nuevo Tema Dinámico)
+          else if (meshType === "plexus") {
+            const currentTheme = CYBER_THEMES[activeCyberThemeRef.current] || CYBER_THEMES[1];
             const scannerY = ((Math.sin(Date.now() / 900) + 1) / 2) * height;
 
             ctx.save();
             ctx.globalCompositeOperation = "screen";
+
+            // --- 0. DIBUJAR HALO CYBERPUNK ---
+            const topHead = { x: (1 - face[10].x) * width, y: face[10].y * height };
+            const haloY = topHead.y - (eyeDist * 1.5);
+            const time = Date.now();
+            const pulse = (Math.sin(time * 0.005) + 1) / 2;
+            const rotation = time * 0.001;
+
+            ctx.save();
+            ctx.translate(topHead.x, haloY);
+            ctx.scale(1, 0.4);
+            ctx.rotate(rotation);
+
+            const baseRadius = eyeDist * 1.8 + pulse * 10;
+
+            // Anillo Exterior
+            ctx.beginPath();
+            ctx.arc(0, 0, baseRadius, 0, Math.PI * 2);
+            ctx.lineWidth = 4 + pulse * 2;
+            ctx.strokeStyle = `rgba(${currentTheme.halo1}, 0.7)`;
+            ctx.shadowBlur = 20;
+            ctx.shadowColor = `rgb(${currentTheme.halo1})`;
+            ctx.stroke();
+
+            // Anillo Medio (segmentado)
+            ctx.beginPath();
+            ctx.arc(0, 0, baseRadius * 0.85, 0, Math.PI * 2);
+            ctx.lineWidth = 6 + pulse * 3;
+            ctx.strokeStyle = `rgba(${currentTheme.halo2}, 0.8)`;
+            ctx.shadowBlur = 15;
+            ctx.shadowColor = `rgb(${currentTheme.halo2})`;
+            ctx.setLineDash([20, 30, 10, 40]);
+            ctx.stroke();
+            ctx.setLineDash([]);
+
+            // Anillo Interior Cyan (fino, atado al color de la máscara)
+            ctx.beginPath();
+            ctx.arc(0, 0, baseRadius * 0.65, 0, Math.PI * 2);
+            ctx.lineWidth = 2;
+            ctx.strokeStyle = `rgba(${currentTheme.mask}, 0.9)`;
+            ctx.stroke();
+            ctx.restore();
             
             // Usamos solo un subconjunto de puntos (1 de cada 4) para el efecto plexus
             const activeNodes = [];
@@ -1658,15 +1829,15 @@ export function Workspace({
               const node = activeNodes[i];
               const isCloseToScanner = Math.abs(node.y - scannerY) < 35;
               
-              // Puntos (Brillan más cuando pasa el escáner)
-              ctx.fillStyle = isCloseToScanner ? "rgba(6, 182, 212, 0.95)" : "rgba(6, 182, 212, 0.5)";
+              // Puntos
+              ctx.fillStyle = isCloseToScanner ? `rgba(${currentTheme.mask}, 0.95)` : `rgba(${currentTheme.mask}, 0.5)`;
               ctx.beginPath();
               ctx.arc(node.x, node.y, isCloseToScanner ? 1.8 : 1.0, 0, Math.PI * 2);
               ctx.fill();
 
               // Líneas conectoras
               ctx.lineWidth = isCloseToScanner ? 1.2 : 0.5;
-              ctx.strokeStyle = isCloseToScanner ? "rgba(6, 182, 212, 0.7)" : "rgba(6, 182, 212, 0.35)";
+              ctx.strokeStyle = isCloseToScanner ? `rgba(${currentTheme.mask}, 0.7)` : `rgba(${currentTheme.mask}, 0.35)`;
               
               for (let j = i + 1; j < activeNodes.length; j++) {
                 const nodeB = activeNodes[j];
@@ -1685,17 +1856,55 @@ export function Workspace({
             }
             ctx.restore();
 
-            // Ojos láser
-            const leftEyeIndices = [33, 161, 160, 159, 158, 157, 173, 133, 155, 154, 153, 145, 144, 163];
-            const rightEyeIndices = [263, 388, 387, 386, 385, 384, 398, 362, 382, 381, 380, 374, 373, 390];
-            drawCyberGlowEyeShape(ctx, face, leftEyeIndices, width, height, eyeDist);
-            drawCyberGlowEyeShape(ctx, face, rightEyeIndices, width, height, eyeDist);
+            // Ojos láser de Neón X
+            const leftEyeCenter = { x: (1 - face[468].x) * width, y: face[468].y * height };
+            const rightEyeCenter = { x: (1 - face[473].x) * width, y: face[473].y * height };
+
+            const drawNeonX = (cx: number, cy: number) => {
+              const size = eyeDist * 0.15 + pulse * 2;
+              
+              ctx.save();
+              ctx.globalCompositeOperation = 'screen';
+              ctx.translate(cx, cy);
+
+              const gradient = ctx.createRadialGradient(0, 0, 0, 0, 0, size * 2.5);
+              gradient.addColorStop(0, `rgba(255, 255, 255, 0.4)`);
+              gradient.addColorStop(0.3, `rgba(${currentTheme.mask}, 0.5)`);
+              gradient.addColorStop(1, `rgba(${currentTheme.mask}, 0)`);
+              ctx.beginPath();
+              ctx.arc(0, 0, size * 2.5, 0, Math.PI * 2);
+              ctx.fillStyle = gradient;
+              ctx.fill();
+
+              ctx.beginPath();
+              ctx.moveTo(-size, -size);
+              ctx.lineTo(size, size);
+              ctx.moveTo(size, -size);
+              ctx.lineTo(-size, size);
+              
+              ctx.lineWidth = 4 + pulse * 2;
+              ctx.lineCap = 'round';
+              ctx.strokeStyle = `rgba(${currentTheme.mask}, 0.8)`; 
+              ctx.shadowBlur = 15 + pulse * 10;
+              ctx.shadowColor = `rgb(${currentTheme.mask})`;
+              ctx.stroke();
+
+              ctx.lineWidth = 1.5;
+              ctx.strokeStyle = 'white';
+              ctx.shadowBlur = 5;
+              ctx.stroke();
+
+              ctx.restore();
+            };
+
+            drawNeonX(leftEyeCenter.x, leftEyeCenter.y);
+            drawNeonX(rightEyeCenter.x, rightEyeCenter.y);
 
             // Escáner láser vertical
             ctx.save();
-            ctx.strokeStyle = "rgba(34, 211, 238, 0.95)";
+            ctx.strokeStyle = `rgba(${currentTheme.mask}, 0.95)`;
             ctx.lineWidth = 3.5;
-            ctx.shadowColor = "#06b6d4";
+            ctx.shadowColor = `rgb(${currentTheme.mask})`;
             ctx.shadowBlur = 15;
             ctx.beginPath();
             ctx.moveTo(0, scannerY);

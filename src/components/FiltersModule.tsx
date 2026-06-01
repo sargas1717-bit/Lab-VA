@@ -29,6 +29,7 @@ export function FiltersModule({
     { id: "clasico" as MeshType, emoji: "🧬", label: "Clásico", desc: "Malla alámbrica facial estándar a 60 FPS" },
     { id: "biolum" as MeshType, emoji: "🦠", label: "Biolum", desc: "Esporas orgánicas y nodos con pulso cromático" },
     { id: "cyber" as MeshType, emoji: "🤖", label: "CyberMask", desc: "Placas complejas de escáner y ojos láser cian" },
+    { id: "plexus" as MeshType, emoji: "💠", label: "Plexus Cyber", desc: "Red neuronal conectiva y temas de color dinámicos con halo" },
     { id: "fuego" as MeshType, emoji: "🔥", label: "Fuego", desc: "Magma fluyente, llamas ascendentes y ojos de lava de calor" },
     { id: "electrico" as MeshType, emoji: "⚡", label: "Electro", desc: "Red de alto voltaje con rayos y relámpagos fluorescentes" },
   ];
@@ -138,6 +139,16 @@ export function FiltersModule({
         <Eye className="w-4 h-4 text-[#10B981] shrink-0 mt-0.5" />
         <p className="text-[10px] text-[#A1A1AA] leading-relaxed">
           <strong className="text-emerald-400 font-mono">[INTERACTION]</strong> Puedes apuntar el dedo índice al sensor oval en el visor para activarlo automáticamente.
+        </p>
+      </div>
+
+      {/* Créditos del Creador */}
+      <div className="mt-2 text-center text-[#636366]">
+        <p className="text-[9px] uppercase tracking-wider font-mono">
+          Creado por el Ingeniero <strong>Jose Gabriel Rojas</strong>
+        </p>
+        <p className="text-[8px] mt-1 leading-tight">
+          Sistema asistido por tecnologías de Google para visión artificial
         </p>
       </div>
     </div>

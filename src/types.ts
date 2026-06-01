@@ -11,7 +11,7 @@ export type ModuleType = "MENU" | "FILTERS" | "EMOTIONS" | "BUBBLES";
 /**
  * Tipos de renderizado de la malla facial (Ingeniería).
  */
-export type MeshType = "clasico" | "biolum" | "cyber" | "fuego" | "electrico";
+export type MeshType = "clasico" | "biolum" | "cyber" | "plexus" | "fuego" | "electrico";
 
 /**
  * Tipos de filtros comerciales de producto (Comercial).
